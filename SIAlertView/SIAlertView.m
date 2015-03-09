@@ -18,14 +18,17 @@ NSString *const SIAlertViewDidDismissNotification = @"SIAlertViewDidDismissNotif
 #define DEBUG_LAYOUT 0
 
 #define MESSAGE_MIN_LINE_COUNT 3
-#define MESSAGE_MAX_LINE_COUNT 5
-#define GAP 10
+#define MESSAGE_MAX_LINE_COUNT 10
+#define GAP 20
 #define CANCEL_BUTTON_PADDING_TOP 5
-#define CONTENT_PADDING_LEFT 10
-#define CONTENT_PADDING_TOP 12
-#define CONTENT_PADDING_BOTTOM 10
-#define BUTTON_HEIGHT 44
-#define CONTAINER_WIDTH 300
+#define CONTENT_PADDING_LEFT 20
+#define CONTENT_PADDING_TOP 24
+#define CONTENT_PADDING_BOTTOM 20
+#define BUTTON_HEIGHT 60
+//#define CONTAINER_WIDTH 460
+
+#define CONTAINER_WIDTH (self.preferredAlertWidth > 0 ? self.preferredAlertWidth : 460)
+
 
 const UIWindowLevel UIWindowLevelSIAlert = 1996.0;  // don't overlap system's alert
 const UIWindowLevel UIWindowLevelSIAlertBackground = 1985.0; // below the alert window
@@ -49,13 +52,11 @@ static SIAlertView *__si_alert_current_view;
 
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *messageLabel;
-@property (nonatomic, strong) UIView *containerView;
 @property (nonatomic, strong) NSMutableArray *buttons;
 
 @property (nonatomic, assign, getter = isLayoutDirty) BOOL layoutDirty;
 
 + (NSMutableArray *)sharedQueue;
-+ (SIAlertView *)currentAlertView;
 
 + (BOOL)isAnimating;
 + (void)setAnimating:(BOOL)animating;
@@ -64,7 +65,7 @@ static SIAlertView *__si_alert_current_view;
 + (void)hideBackgroundAnimated:(BOOL)animated;
 
 - (void)setup;
-- (void)invalidateLayout;
+//- (void)invalidateLayout;
 - (void)resetTransition;
 
 @end
@@ -299,8 +300,9 @@ static SIAlertView *__si_alert_current_view;
 + (void)showBackground
 {
     if (!__si_alert_background_window) {
-        
+
         CGRect frame = [[UIScreen mainScreen] bounds];
+        
         if([[UIScreen mainScreen] respondsToSelector:@selector(fixedCoordinateSpace)])
         {
             frame = [[[UIScreen mainScreen] fixedCoordinateSpace] convertRect:frame fromCoordinateSpace:[[UIScreen mainScreen] coordinateSpace]];
@@ -308,6 +310,7 @@ static SIAlertView *__si_alert_current_view;
         
         __si_alert_background_window = [[SIAlertBackgroundWindow alloc] initWithFrame:frame
                                                                              andStyle:[SIAlertView currentAlertView].backgroundStyle];
+        
         [__si_alert_background_window makeKeyAndVisible];
         __si_alert_background_window.alpha = 0;
         [UIView animateWithDuration:0.3
@@ -440,6 +443,10 @@ static SIAlertView *__si_alert_current_view;
 
 - (void)dismissAnimated:(BOOL)animated cleanup:(BOOL)cleanup
 {
+    if (self.bgTapGesture) {
+        [self removeGestureRecognizer:self.bgTapGesture];
+        self.bgTapGesture = nil;
+    }
     BOOL isVisible = self.isVisible;
     
     if (isVisible) {
@@ -805,35 +812,18 @@ static SIAlertView *__si_alert_current_view;
 - (CGFloat)heightForTitleLabel
 {
     if (self.titleLabel) {
-        #ifdef __IPHONE_7_0
-            NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-            paragraphStyle.lineBreakMode = self.titleLabel.lineBreakMode;
-            
-            NSDictionary *attributes = @{NSFontAttributeName:self.titleLabel.font,
-                                         NSParagraphStyleAttributeName: paragraphStyle.copy};
-            
-            // NSString class method: boundingRectWithSize:options:attributes:context is
-            // available only on ios7.0 sdk.
-            CGRect rect = [self.titleLabel.text boundingRectWithSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, CGFLOAT_MAX)
-                                                             options:NSStringDrawingUsesLineFragmentOrigin
-                                                          attributes:attributes
-                                                             context:nil];
-            return ceil(rect.size.height);
-        #else
-            CGSize size = [self.title sizeWithFont:self.titleLabel.font
-                                       minFontSize:
-                                                    #if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_6_0
-                                                       self.titleLabel.font.pointSize * self.titleLabel.minimumScaleFactor
-                                                    #else
-                                                       self.titleLabel.minimumFontSize
-                                                    #endif
-                                    actualFontSize:nil
-                                          forWidth:CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2
-                                     lineBreakMode:self.titleLabel.lineBreakMode];
-            return size.height;
-        #endif
+        CGSize size = [self.title sizeWithFont:self.titleLabel.font
+                                   minFontSize:
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_6_0
+                       self.titleLabel.font.pointSize * self.titleLabel.minimumScaleFactor
+#else
+                       self.titleLabel.minimumFontSize
+#endif
+                                actualFontSize:nil
+                                      forWidth:CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2
+                                 lineBreakMode:self.titleLabel.lineBreakMode];
+        return size.height;
     }
-    
     return 0;
 }
 
@@ -842,31 +832,16 @@ static SIAlertView *__si_alert_current_view;
     CGFloat minHeight = MESSAGE_MIN_LINE_COUNT * self.messageLabel.font.lineHeight;
     if (self.messageLabel) {
         CGFloat maxHeight = MESSAGE_MAX_LINE_COUNT * self.messageLabel.font.lineHeight;
+
+        NSDictionary *attributes = @{NSFontAttributeName:self.messageLabel.font};
         
-        #ifdef __IPHONE_7_0
-            NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-            paragraphStyle.lineBreakMode = self.messageLabel.lineBreakMode;
-            
-            NSDictionary *attributes = @{NSFontAttributeName:self.messageLabel.font,
-                                         NSParagraphStyleAttributeName: paragraphStyle.copy};
-            
-            // NSString class method: boundingRectWithSize:options:attributes:context is
-            // available only on ios7.0 sdk.
-            CGRect rect = [self.titleLabel.text boundingRectWithSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
-                                                             options:NSStringDrawingUsesLineFragmentOrigin
-                                                          attributes:attributes
-                                                             context:nil];
-            
-            return MAX(minHeight, ceil(rect.size.height));
-        #else
-            CGSize size = [self.message sizeWithFont:self.messageLabel.font
-                                   constrainedToSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
-                                       lineBreakMode:self.messageLabel.lineBreakMode];
-            
-            return MAX(minHeight, size.height);
-        #endif
+        CGRect rect = [self.message boundingRectWithSize:CGSizeMake(CONTAINER_WIDTH - CONTENT_PADDING_LEFT * 2, maxHeight)
+                                                         options:NSStringDrawingUsesLineFragmentOrigin
+                                              attributes:attributes
+                                                         context:nil];
+        
+        return MAX(minHeight, ceil(rect.size.height));
     }
-    
     return minHeight;
 }
 
@@ -1177,6 +1152,29 @@ static SIAlertView *__si_alert_current_view;
             [button setTitleColor:[color colorWithAlphaComponent:0.8] forState:UIControlStateHighlighted];
         }
     }
+}
+
+- (void)setupBackgroundtapToDismiss
+{
+    self.bgTapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(tappedOnTheAlertViewWindow:)];
+    self.bgTapGesture.delegate = self;
+    [self addGestureRecognizer:self.bgTapGesture];
+}
+
+- (void)tappedOnTheAlertViewWindow:(id)sender
+{
+	[SIAlertView setAnimating:YES]; // set this flag to YES in order to prevent showing another alert in action block
+
+	[self dismissAnimated:YES];
+}
+
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
+{
+    BOOL retVal = YES;
+    if (touch.view != self) {
+        retVal = NO;
+    }
+    return retVal;
 }
 
 # pragma mark -
