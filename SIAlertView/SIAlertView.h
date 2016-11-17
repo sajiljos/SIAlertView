@@ -40,7 +40,7 @@ typedef NS_ENUM(NSInteger, SIAlertViewTransitionStyle) {
 @class SIAlertView;
 typedef void(^SIAlertViewHandler)(SIAlertView *alertView);
 
-@interface SIAlertView : UIView <UIGestureRecognizerDelegate>
+@interface SIAlertView : UIView <UIGestureRecognizerDelegate, CAAnimationDelegate>
 
 @property (nonatomic, copy) NSString *title;
 @property (nonatomic, copy) NSString *message;
@@ -88,5 +88,6 @@ typedef void(^SIAlertViewHandler)(SIAlertView *alertView);
 
 - (void)setupBackgroundtapToDismiss;
 - (void)invalidateLayout;
+- (void)enableCopying:(BOOL)enable;
 
 @end

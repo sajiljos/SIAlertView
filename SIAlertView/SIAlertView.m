@@ -10,6 +10,8 @@
 #import "UIWindow+SIUtils.h"
 #import <QuartzCore/QuartzCore.h>
 
+#import "SICopyableLabel.h"
+
 NSString *const SIAlertViewWillShowNotification = @"SIAlertViewWillShowNotification";
 NSString *const SIAlertViewDidShowNotification = @"SIAlertViewDidShowNotification";
 NSString *const SIAlertViewWillDismissNotification = @"SIAlertViewWillDismissNotification";
@@ -51,7 +53,7 @@ static SIAlertView *__si_alert_current_view;
 @property (nonatomic, assign, getter = isVisible) BOOL visible;
 
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UILabel *messageLabel;
+@property (nonatomic, strong) SICopyableLabel *messageLabel;
 @property (nonatomic, strong) NSMutableArray *buttons;
 
 @property (nonatomic, assign, getter = isLayoutDirty) BOOL layoutDirty;
@@ -720,6 +722,10 @@ static SIAlertView *__si_alert_current_view;
     [self setNeedsLayout];
 }
 
+- (void)enableCopying:(BOOL)enable {
+    self.messageLabel.userInteractionEnabled = enable;
+}
+
 - (void)validateLayout
 {
     if (!self.isLayoutDirty) {
@@ -911,7 +917,7 @@ static SIAlertView *__si_alert_current_view;
 {
     if (self.message) {
         if (!self.messageLabel) {
-            self.messageLabel = [[UILabel alloc] initWithFrame:self.bounds];
+            self.messageLabel = [[SICopyableLabel alloc] initWithFrame:self.bounds];
             self.messageLabel.textAlignment = NSTextAlignmentCenter;
             self.messageLabel.backgroundColor = [UIColor clearColor];
             self.messageLabel.font = self.messageFont;
