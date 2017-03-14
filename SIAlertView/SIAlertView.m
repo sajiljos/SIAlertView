@@ -274,7 +274,7 @@ static SIAlertView *__si_alert_current_view;
 + (NSMutableArray *)sharedQueue
 {
     if (!__si_alert_queue) {
-        __si_alert_queue = [NSMutableArray array];
+        __si_alert_queue = [[NSMutableArray alloc] init];
     }
     return __si_alert_queue;
 }
@@ -313,7 +313,7 @@ static SIAlertView *__si_alert_current_view;
         __si_alert_background_window = [[SIAlertBackgroundWindow alloc] initWithFrame:frame
                                                                              andStyle:[SIAlertView currentAlertView].backgroundStyle];
         
-        [__si_alert_background_window makeKeyAndVisible];
+        [__si_alert_background_window setHidden:NO];
         __si_alert_background_window.alpha = 0;
         [UIView animateWithDuration:0.3
                          animations:^{
@@ -324,9 +324,13 @@ static SIAlertView *__si_alert_current_view;
 
 + (void)hideBackgroundAnimated:(BOOL)animated
 {
-    if (!animated) {
-        [__si_alert_background_window removeFromSuperview];
+    void (^removeBgView)() = ^{
+        __si_alert_background_window.hidden = YES;
         __si_alert_background_window = nil;
+    };
+    
+    if (!animated) {
+        removeBgView();
         return;
     }
     [UIView animateWithDuration:0.3
@@ -334,8 +338,7 @@ static SIAlertView *__si_alert_current_view;
                          __si_alert_background_window.alpha = 0;
                      }
                      completion:^(BOOL finished) {
-                         [__si_alert_background_window removeFromSuperview];
-                         __si_alert_background_window = nil;
+                         removeBgView();
                      }];
 }
 
@@ -416,7 +419,7 @@ static SIAlertView *__si_alert_current_view;
         window.rootViewController = viewController;
         self.alertWindow = window;
     }
-    [self.alertWindow makeKeyAndVisible];
+    [self.alertWindow setHidden:NO];
     
     [self validateLayout];
     
@@ -468,7 +471,7 @@ static SIAlertView *__si_alert_current_view;
         
         [SIAlertView setCurrentAlertView:nil];
         
-        SIAlertView *nextAlertView;
+        SIAlertView *nextAlertView = nil;
         NSInteger index = [[SIAlertView sharedQueue] indexOfObject:self];
         if (index != NSNotFound && index < [SIAlertView sharedQueue].count - 1) {
             nextAlertView = [SIAlertView sharedQueue][index + 1];
@@ -869,7 +872,7 @@ static SIAlertView *__si_alert_current_view;
     self.titleLabel = nil;
     self.messageLabel = nil;
     [self.buttons removeAllObjects];
-    [self.alertWindow removeFromSuperview];
+    self.alertWindow.hidden = YES;
     self.alertWindow = nil;
     self.layoutDirty = NO;
 }
