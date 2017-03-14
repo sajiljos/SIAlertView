@@ -531,7 +531,10 @@ static SIAlertView *__si_alert_current_view;
     if (!window) {
         window = [UIApplication sharedApplication].windows[0];
     }
-    [window makeKeyWindow];
+    
+    if (window.isKeyWindow == NO) {
+        [window makeKeyWindow];
+    }
     window.hidden = NO;
 }
 
